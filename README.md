@@ -5,7 +5,6 @@
 Universidad de Málaga
 
 **Autor:** Ing. Edgar O. Herrera Logroño, M.Sc. en Inteligencia Artificial, VIU España
-**Directores propuestos:** Prof. Ezequiel López Rubio · Prof. Juan Miguel Ortiz de Lazcano
 
 ---
 
@@ -13,7 +12,7 @@ Universidad de Málaga
 
 NSL-KDD tiene más de 15 años. Fue útil para comenzar, pero sus distribuciones de ataque ya no reflejan lo que pasa en una red real hoy. Trabajar solo con ese dataset sería como entrenar a un médico únicamente con casos de los años noventa y luego enviarlo a urgencias.
 
-CIC-IDS2017 captura tráfico universitario real del Canadian Institute for Cybersecurity durante cinco días de 2017, con 15 tipos de ataque distintos y más de 2.8 millones de registros antes de la limpieza. Es el mismo dataset que grupos como el NICS Lab han usado en publicaciones recientes. No se eligió por ser el más grande, sino porque es el más honesto en cuanto a complejidad real.
+CIC-IDS2017 captura tráfico universitario real del Canadian Institute for Cybersecurity durante cinco días de 2017, con 15 tipos de ataque distintos y más de 2.8 millones de registros antes de la limpieza. Es el mismo dataset que grupos especializados en detección de intrusiones han usado en publicaciones recientes. No se eligió por ser el más grande, sino porque es el más honesto en cuanto a complejidad real.
 
 ---
 
@@ -36,16 +35,11 @@ graph LR
     style E fill:#888,color:#fff
 ```
 
-*El Prof. López Rubio indicó aproximadamente 100,000 muestras. El resultado 
-final fue 69,026 porque varias clases mayoritarias no alcanzaban la cuota 
-asignada (Bot: 1,948, SSH-Patator: 3,219). Se conservaron todas las muestras 
-de las clases minoritarias sin excepción..
+*El objetivo era aproximadamente 100,000 muestras. El resultado final fue 69,026 porque varias clases mayoritarias no alcanzaban la cuota asignada (Bot: 1,948, SSH-Patator: 3,219). Se conservaron todas las muestras de las clases minoritarias sin excepción.
 
 ---
 
 ## Las cuatro propuestas comparadas
-
-*El Prof. López Rubio pidió explícitamente este orden, porque importa que los revisores entiendan qué se propone y con qué se compara:
 
 | # | Nombre | Descripción | Pesos |
 |---|--------|-------------|-------|
@@ -56,21 +50,15 @@ de las clases minoritarias sin excepción..
 
 ---
 
-## Correcciones incorporadas de los directores
+## Modelo híbrido
 
-Estas no son mejoras opcionales. Son correcciones que cambian la validez del modelo.
-
-**Prof. Ortiz de Lazcano (21-abr-2026):** Los flags binarios (FIN, SYN, RST, PSH, ACK, URG, CWE, ECE) son variables cualitativas, no numéricas. Tratarlos con GaussianNB introduce un sesgo de distancia que no tiene sentido para valores 0/1. La corrección fue separarlos con CategoricalNB y combinar las probabilidades multiplicándolas:
+Las variables categóricas (flags binarios: FIN, SYN, RST, PSH, ACK, URG, CWE, ECE) se procesan con CategoricalNB. Las numéricas (69 estadísticas de flujo) con GaussianNB. Las probabilidades se combinan multiplicándolas:
 
 ```
 P(x|c) = P_cat(x_qual|c) * P_gauss(x_quant|c)
 ```
 
-**Prof. Ortiz de Lazcano (24-abr-2026):** Cuando el test tiene categorías no vistas en entrenamiento, OrdinalEncoder devuelve -1. Clipear ese valor a 0 equivale a decirle al modelo que algo desconocido es lo mismo que la categoría más común. La corrección es asignar max_categorías + 1, declarando explícitamente que esa muestra es desconocida.
-
-**Prof. López Rubio (20-abr-2026):** Evaluar 7 niveles de heterogeneidad (alpha 0.05 a 1.0) para observar el gradiente suave en el comportamiento de las cuatro propuestas.
-
-**Prof. López Rubio (26-abr-2026):** Submuestrear las clases mayoritarias conservando todas las muestras de las minoritarias, para llegar a aproximadamente 100,000 registros en total.
+Para categorías no vistas en entrenamiento se asigna max_categorías + 1, evitando el sesgo de asimilar algo desconocido a la categoría más común.
 
 ---
 
@@ -180,11 +168,11 @@ El hallazgo más interesante no está en el F1 máximo, sino en la Figura 3. En 
 
 ---
 
-## Limitaciones que hay que declarar
+## Limitaciones declaradas
 
 El submuestreo deja a clases como Heartbleed con solo 11 muestras e Infiltration con 36. El modelo las detecta, pero no tiene suficiente información para aprender sus patrones con solidez. Cualquier resultado sobre esas clases hay que interpretarlo con cautela.
 
-En heterogeneidad moderada (alpha 0.3 y 0.5) el Baseline supera ligeramente a la Mezcla Aprendida. Eso sugiere que el optimizador se ajusta demasiado al conjunto de validación cuando los nodos no son muy distintos entre sí. Es una limitación real que vale la pena declarar.
+En heterogeneidad moderada (alpha 0.3 y 0.5) el Baseline supera ligeramente a la Mezcla Aprendida. Eso sugiere que el optimizador se ajusta demasiado al conjunto de validación cuando los nodos no son muy distintos entre sí.
 
 Los valores CRISC son estáticos y no evolucionan por ronda de entrenamiento. Es una simplificación razonable para este ejercicio, pero abre preguntas para etapas posteriores.
 
@@ -192,7 +180,7 @@ Los valores CRISC son estáticos y no evolucionan por ronda de entrenamiento. Es
 
 ## Pregunta abierta
 
-Que la correlación entre ICC y pesos aprendidos se mantenga en dos datasets tan distintos sugiere que puede no ser específica de un dominio. La pregunta para el siguiente ejercicio es: ¿los resultados con UNSW-NB15 confirmarán que la confianza institucional actúa como regularizador independientemente del tipo de tráfico analizado? Esa respuesta conecta directamente con la línea de trabajo del NICS Lab sobre transferencia de confianza en sistemas federados.
+Que la correlación entre ICC y pesos aprendidos se mantenga en dos datasets tan distintos sugiere que puede no ser específica de un dominio. La pregunta para el siguiente ejercicio es: ¿los resultados con UNSW-NB15 confirmarán que la confianza institucional actúa como regularizador independientemente del tipo de tráfico analizado?
 
 ---
 
@@ -208,7 +196,7 @@ Tiempo estimado: 90-120 minutos en CPU. Al terminar suena un beep doble de 432 H
 
 | Versión | Fecha | Cambio principal |
 |---------|-------|-----------------|
-| **v8.9** | **Abr 2026** | Primera versión con CIC-IDS2017: 15 clases, submuestreo por criterio directores, max_categorias+1, 3 figuras |
+| **v8.9** | **Abr 2026** | Primera versión con CIC-IDS2017: 15 clases, submuestreo con clases minoritarias completas, modelo híbrido, 3 figuras |
 
 ---
 
