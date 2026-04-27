@@ -36,13 +36,16 @@ graph LR
     style E fill:#888,color:#fff
 ```
 
-*Submuestreo aplicado por indicación del Prof. López Rubio (26-abr-2026): conservar todas las clases minoritarias y limitar las mayoritarias hasta llegar al mismo orden de magnitud que NSL-KDD.
+*El Prof. López Rubio indicó aproximadamente 100,000 muestras. El resultado 
+final fue 69,026 porque varias clases mayoritarias no alcanzaban la cuota 
+asignada (Bot: 1,948, SSH-Patator: 3,219). Se conservaron todas las muestras 
+de las clases minoritarias sin excepción..
 
 ---
 
 ## Las cuatro propuestas comparadas
 
-El Prof. López Rubio pidió explícitamente este orden, porque importa que los revisores entiendan qué se propone y con qué se compara:
+*El Prof. López Rubio pidió explícitamente este orden, porque importa que los revisores entiendan qué se propone y con qué se compara:
 
 | # | Nombre | Descripción | Pesos |
 |---|--------|-------------|-------|
