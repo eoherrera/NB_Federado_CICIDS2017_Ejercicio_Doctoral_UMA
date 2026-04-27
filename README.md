@@ -1,5 +1,5 @@
 # EJD-UMA-004 v8.9 · Naive Bayes Federado con MoG Real + Modelo Híbrido
-## Dataset: CIC-IDS2017 — Canadian Institute for Cybersecurity
+## Dataset: CIC-IDS2017, Canadian Institute for Cybersecurity
 
 **Ejercicio doctoral** | Programa de Doctorado en Tecnologías Informáticas
 Universidad de Málaga
@@ -19,12 +19,23 @@ Este dataset es utilizado por investigadores del NICS Lab y otros grupos con exp
 
 ## Relación con el ejercicio anterior
 
-Este repositorio es la continuación directa de [EJD-UMA-003](https://github.com/eoherrera/NB_Federado_Ejercicio_Doctoral_UMA), que trabajó con NSL-KDD. La arquitectura del modelo es idéntica — lo que cambia es el dataset, que es más complejo, más grande y más cercano a un entorno real de ciberataques.
+Este repositorio es la continuación directa de [EJD-UMA-003](https://github.com/eoherrera/NB_Federado_Ejercicio_Doctoral_UMA), que trabajó con NSL-KDD. La arquitectura del modelo es idéntica, lo que cambia es el dataset, que es más complejo, más grande y más cercano a un entorno real de ciberataques.
 
 | Ejercicio | Dataset | Clases | Registros | F1 máximo |
 |-----------|---------|--------|-----------|-----------|
 | EJD-UMA-003 v8.8 | NSL-KDD | 5 | 125,973 | 0.466 |
 | **EJD-UMA-004 v8.9** | **CIC-IDS2017** | **15** | **69,026*** | **0.704** |
+
+
+```mermaid
+graph LR
+    A[EJD-UMA-001<br/>RF Federado] --> B[EJD-UMA-002<br/>TED+MDS]
+    B --> C[EJD-UMA-003<br/>NB Federado<br/>NSL-KDD]
+    C --> D[EJD-UMA-004<br/>NB Federado<br/>CIC-IDS2017]
+    D --> E[EJD-UMA-005<br/>NB Federado<br/>UNSW-NB15<br/>En proceso]
+    style D fill:#1565C0,color:#fff
+    style E fill:#888,color:#fff
+```
 
 *Submuestreo aplicado siguiendo el criterio del Prof. López Rubio (26-abr-2026): conservar todas las muestras de clases minoritarias y limitar las mayoritarias hasta alcanzar el mismo orden de magnitud que NSL-KDD.
 
@@ -36,14 +47,14 @@ En el orden solicitado por el Prof. López Rubio:
 
 | # | Nombre | Descripción | Pesos |
 |---|--------|-------------|-------|
-| 1 | **Centralizado** | Un solo NB entrenado con todos los datos | N/A — referencia teórica |
+| 1 | **Centralizado** | Un solo NB entrenado con todos los datos | N/A, referencia teórica |
 | 2 | **Baseline (FedAvg)** | Pesos proporcionales al tamaño del dataset de cada nodo | n_k / n |
 | 3 | **Mezcla Entropía** | Pesos inversamente proporcionales a la entropía local | 1/H(k) normalizado |
 | 4 | **Mezcla Aprendida** | Pesos aprendidos desde validación con regularización ICC | Nelder-Mead + L2 hacia ICC |
 
 ---
 
-## Modelo híbrido — correcciones de los directores
+## Modelo híbrido, correcciones de los directores
 
 **Prof. Ortiz de Lazcano (21-abr-2026):**
 Las variables categóricas (flags binarios: FIN, SYN, RST, PSH, ACK, URG, CWE, ECE) se procesan con CategoricalNB en lugar de GaussianNB. Tratar variables binarias como distancias numéricas introduce un sesgo sin fundamento. Las probabilidades se combinan multiplicándolas:
@@ -59,7 +70,7 @@ Para datasets nuevos donde el conjunto de test puede contener categorías no vis
 Se evalúan 7 niveles de heterogeneidad: alpha = [0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0], para observar el gradiente suave en el comportamiento de las cuatro propuestas.
 
 **Prof. López Rubio (26-abr-2026):**
-Submuestreo de clases mayoritarias manteniendo todas las muestras de clases minoritarias, para alcanzar un total de aproximadamente 100,000 muestras — mismo orden de magnitud que NSL-KDD.
+Submuestreo de clases mayoritarias manteniendo todas las muestras de clases minoritarias, para alcanzar un total de aproximadamente 100,000 muestras, mismo orden de magnitud que NSL-KDD.
 
 ---
 
@@ -133,7 +144,7 @@ ICC = (CMM / 5) * KCI * (1 - KRI) * (1 - CVSS / 10)
 | 0.7 | 0.22 | **0.683** | 0.682 | 0.682 | 0.681 |
 | 1.0 | 0.12 | **0.671** | 0.671 | 0.671 | 0.681 |
 
-### Significancia estadística — McNemar (Aprendida vs Baseline)
+### Significancia estadística, McNemar (Aprendida vs Baseline)
 
 | Alpha | chi2 | p-valor | Significativo | Delta |
 |-------|------|---------|---------------|-------|
@@ -147,14 +158,14 @@ ICC = (CMM / 5) * KCI * (1 - KRI) * (1 - CVSS / 10)
 
 ---
 
-## PROTOCOLO-STRESS — Resumen
+## PROTOCOLO-STRESS, Resumen
 
 | Verificación | Resultado |
 |-------------|-----------|
 | Pesos suman 1.0000 en todos los niveles | OK |
 | Predicciones con las 15 clases presentes | OK |
 | F1 por encima del umbral en 7/7 niveles | OK |
-| Categorías nuevas en val/test | OK — ninguna detectada |
+| Categorías nuevas en val/test | OK, ninguna detectada |
 | Submuestreo con clases minoritarias completas | OK |
 
 **Resultado general: 23/28 checks OK. Apto para entrega académica.**
@@ -173,7 +184,7 @@ La Figura 3 muestra que el nodo con mayor ICC (Financiero, ICC=0.393) recibe con
 
 **Limitación 2:** En heterogeneidad moderada (alpha=0.3 y 0.5) el Baseline supera ligeramente a la Mezcla Aprendida, lo que indica sobreajuste del optimizador al conjunto de validación cuando las distribuciones de los nodos son similares.
 
-**Limitación 3:** Variables CRISC estáticas — los valores de ICC no evolucionan por ronda de entrenamiento.
+**Limitación 3:** Variables CRISC estáticas, los valores de ICC no evolucionan por ronda de entrenamiento.
 
 ---
 
@@ -186,7 +197,7 @@ Los resultados de CIC-IDS2017 muestran que el modelo federado con pesos aprendid
 ## Cómo ejecutar en Google Colab
 
 1. Abrir `EJD_UMA_004_v8_9.ipynb` en Google Colab
-2. Tener disponible el archivo `kaggle.json` — se obtiene en kaggle.com → Ajustes → API
+2. Tener disponible el archivo `kaggle.json`, se obtiene en kaggle.com → Ajustes → API
 3. Ejecutar **Runtime → Run all**
 4. El programa detecta automáticamente si el dataset ya existe antes de descargarlo
 5. Tiempo estimado: 90-120 minutos en CPU de Colab
@@ -211,5 +222,5 @@ Todos los resultados son reproducibles con SEMILLA=42.
 |--------|---------|--------|
 | EJD-UMA-001 | Random Forest Federado | [RF_Federado_Ejercicio_Doctoral_UMA_v8](https://github.com/eoherrera/RF_Federado_Ejercicio_Doctoral_UMA_v8) |
 | EJD-UMA-002 | Tree Edit Distance + MDS | [TED_MDS_Ejercicio_Doctoral_UMA](https://github.com/eoherrera/TED_MDS_Ejercicio_Doctoral_UMA) |
-| EJD-UMA-003 | NB Federado — NSL-KDD | [NB_Federado_Ejercicio_Doctoral_UMA](https://github.com/eoherrera/NB_Federado_Ejercicio_Doctoral_UMA) |
-| EJD-UMA-004 | NB Federado — CIC-IDS2017 | Repositorio actual |
+| EJD-UMA-003 | NB Federado, NSL-KDD | [NB_Federado_Ejercicio_Doctoral_UMA](https://github.com/eoherrera/NB_Federado_Ejercicio_Doctoral_UMA) |
+| EJD-UMA-004 | NB Federado, CIC-IDS2017 | [NB_Federado_CICIDS2017_Ejercicio_Doctoral_UMA](https://github.com/eoherrera/NB_Federado_CICIDS2017_Ejercicio_Doctoral_UMA) |
