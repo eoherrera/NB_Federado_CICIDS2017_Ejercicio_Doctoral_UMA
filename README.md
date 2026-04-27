@@ -11,21 +11,20 @@ Universidad de Málaga
 
 ## Por qué CIC-IDS2017
 
-NSL-KDD es un dataset de laboratorio construido en 2009. Sus distribuciones de ataque no reflejan la complejidad del tráfico real moderno. La extensión hacia CIC-IDS2017 responde a la necesidad de llevar el ejercicio a escenarios más realistas, complejos y heterogéneos, con mayor volumen y diversidad de amenazas modernas.
+NSL-KDD tiene más de 15 años. Fue útil para comenzar, pero sus distribuciones de ataque ya no reflejan lo que pasa en una red real hoy. Trabajar solo con ese dataset sería como entrenar a un médico únicamente con casos de los años noventa y luego enviarlo a urgencias.
 
-Este dataset es utilizado por investigadores del NICS Lab y otros grupos con experiencia en el campo, lo que respalda su elección. Al igual que en la naturaleza, un sistema que solo conoce un entorno controlado no puede adaptarse a la complejidad del mundo real.
+CIC-IDS2017 captura tráfico universitario real del Canadian Institute for Cybersecurity durante cinco días de 2017, con 15 tipos de ataque distintos y más de 2.8 millones de registros antes de la limpieza. Es el mismo dataset que grupos como el NICS Lab han usado en publicaciones recientes. No se eligió por ser el más grande, sino porque es el más honesto en cuanto a complejidad real.
 
 ---
 
 ## Relación con el ejercicio anterior
 
-Este repositorio es la continuación directa de [EJD-UMA-003](https://github.com/eoherrera/NB_Federado_Ejercicio_Doctoral_UMA), que trabajó con NSL-KDD. La arquitectura del modelo es idéntica, lo que cambia es el dataset, que es más complejo, más grande y más cercano a un entorno real de ciberataques.
+Este repositorio continúa desde [EJD-UMA-003](https://github.com/eoherrera/NB_Federado_Ejercicio_Doctoral_UMA), que trabajó con NSL-KDD. La arquitectura del modelo no cambió; lo que cambia es el escenario donde se prueba.
 
 | Ejercicio | Dataset | Clases | Registros | F1 máximo |
 |-----------|---------|--------|-----------|-----------|
 | EJD-UMA-003 v8.8 | NSL-KDD | 5 | 125,973 | 0.466 |
 | **EJD-UMA-004 v8.9** | **CIC-IDS2017** | **15** | **69,026*** | **0.704** |
-
 
 ```mermaid
 graph LR
@@ -37,52 +36,52 @@ graph LR
     style E fill:#888,color:#fff
 ```
 
-*Submuestreo aplicado siguiendo el criterio del Prof. López Rubio (26-abr-2026): conservar todas las muestras de clases minoritarias y limitar las mayoritarias hasta alcanzar el mismo orden de magnitud que NSL-KDD.
+*Submuestreo aplicado por indicación del Prof. López Rubio (26-abr-2026): conservar todas las clases minoritarias y limitar las mayoritarias hasta llegar al mismo orden de magnitud que NSL-KDD.
 
 ---
 
 ## Las cuatro propuestas comparadas
 
-En el orden solicitado por el Prof. López Rubio:
+El Prof. López Rubio pidió explícitamente este orden, porque importa que los revisores entiendan qué se propone y con qué se compara:
 
 | # | Nombre | Descripción | Pesos |
 |---|--------|-------------|-------|
-| 1 | **Centralizado** | Un solo NB entrenado con todos los datos | N/A, referencia teórica |
-| 2 | **Baseline (FedAvg)** | Pesos proporcionales al tamaño del dataset de cada nodo | n_k / n |
-| 3 | **Mezcla Entropía** | Pesos inversamente proporcionales a la entropía local | 1/H(k) normalizado |
-| 4 | **Mezcla Aprendida** | Pesos aprendidos desde validación con regularización ICC | Nelder-Mead + L2 hacia ICC |
+| 1 | **Centralizado** | Un solo NB con todos los datos juntos | N/A, referencia teórica |
+| 2 | **Baseline (FedAvg)** | Cada nodo pesa según cuántos datos tiene | n_k / n |
+| 3 | **Mezcla Entropía** | Los nodos más heterogéneos pesan menos | 1/H(k) normalizado |
+| 4 | **Mezcla Aprendida** | El optimizador aprende los pesos desde validación, regularizado con ICC | Nelder-Mead + L2 hacia ICC |
 
 ---
 
-## Modelo híbrido, correcciones de los directores
+## Correcciones incorporadas de los directores
 
-**Prof. Ortiz de Lazcano (21-abr-2026):**
-Las variables categóricas (flags binarios: FIN, SYN, RST, PSH, ACK, URG, CWE, ECE) se procesan con CategoricalNB en lugar de GaussianNB. Tratar variables binarias como distancias numéricas introduce un sesgo sin fundamento. Las probabilidades se combinan multiplicándolas:
+Estas no son mejoras opcionales. Son correcciones que cambian la validez del modelo.
+
+**Prof. Ortiz de Lazcano (21-abr-2026):** Los flags binarios (FIN, SYN, RST, PSH, ACK, URG, CWE, ECE) son variables cualitativas, no numéricas. Tratarlos con GaussianNB introduce un sesgo de distancia que no tiene sentido para valores 0/1. La corrección fue separarlos con CategoricalNB y combinar las probabilidades multiplicándolas:
 
 ```
 P(x|c) = P_cat(x_qual|c) * P_gauss(x_quant|c)
 ```
 
-**Prof. Ortiz de Lazcano (24-abr-2026):**
-Para datasets nuevos donde el conjunto de test puede contener categorías no vistas en entrenamiento, OrdinalEncoder asigna -1. La corrección es asignar max_categorías + 1 en lugar de clipear a 0, evitando el sesgo de asimilar algo desconocido a la categoría más frecuente.
+**Prof. Ortiz de Lazcano (24-abr-2026):** Cuando el test tiene categorías no vistas en entrenamiento, OrdinalEncoder devuelve -1. Clipear ese valor a 0 equivale a decirle al modelo que algo desconocido es lo mismo que la categoría más común. La corrección es asignar max_categorías + 1, declarando explícitamente que esa muestra es desconocida.
 
-**Prof. López Rubio (20-abr-2026):**
-Se evalúan 7 niveles de heterogeneidad: alpha = [0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0], para observar el gradiente suave en el comportamiento de las cuatro propuestas.
+**Prof. López Rubio (20-abr-2026):** Evaluar 7 niveles de heterogeneidad (alpha 0.05 a 1.0) para observar el gradiente suave en el comportamiento de las cuatro propuestas.
 
-**Prof. López Rubio (26-abr-2026):**
-Submuestreo de clases mayoritarias manteniendo todas las muestras de clases minoritarias, para alcanzar un total de aproximadamente 100,000 muestras, mismo orden de magnitud que NSL-KDD.
+**Prof. López Rubio (26-abr-2026):** Submuestrear las clases mayoritarias conservando todas las muestras de las minoritarias, para llegar a aproximadamente 100,000 registros en total.
 
 ---
 
 ## Variables de riesgo CRISC
 
+El ICC combina cuatro indicadores que cualquier auditor de seguridad reconocería:
+
 | Variable | Qué mide | Rango |
 |----------|----------|-------|
 | CMM | Madurez del proceso de gestión de riesgos | 1 a 5 |
-| KCI | Proporción de controles de seguridad implementados | 0 a 1 |
-| KRI | Frecuencia de activación de indicadores de riesgo | 0 a 1 (menor es mejor) |
-| CVSS | Puntuación media de vulnerabilidades | 0 a 10 |
-| ICC | Índice de Coherencia Contextual | 0 a 1 |
+| KCI | Proporción de controles implementados | 0 a 1 |
+| KRI | Frecuencia de activación de alertas de riesgo | 0 a 1 (menor es mejor) |
+| CVSS | Puntuación media de vulnerabilidades activas | 0 a 10 |
+| ICC | Índice de Coherencia Contextual (resultado) | 0 a 1 |
 
 ```
 ICC = (CMM / 5) * KCI * (1 - KRI) * (1 - CVSS / 10)
@@ -94,20 +93,20 @@ ICC = (CMM / 5) * KCI * (1 - KRI) * (1 - CVSS / 10)
 | Salud | 3 | 0.70 | 0.25 | 5.1 | 0.154 |
 | Gobierno | 2 | 0.55 | 0.40 | 6.8 | 0.042 |
 
+Un nodo financiero bien gestionado debería contribuir más al modelo federado que uno gubernamental con menor madurez. Esa es la hipótesis que este ejercicio pone a prueba.
+
 ---
 
 ## Dataset CIC-IDS2017
 
 **Fuente:** Canadian Institute for Cybersecurity (2017)
-**Versión utilizada:** sweety18/cicids2017-full-modified-all-8-files (Kaggle)
-**Justificación de la fuente:** Es la versión con mayor número de descargas y mejor valoración entre las disponibles públicamente. Consolida los 8 archivos CSV originales del CIC en un único archivo, conservando las 79 columnas y las 15 clases originales.
+**Versión en Kaggle:** sweety18/cicids2017-full-modified-all-8-files
 
-**Limpieza aplicada (Lara-Gutiérrez 2025, Lanvin et al. 2022):**
-- Eliminación de 1,479 valores infinitos en Flow Bytes/s y Flow Packets/s
-- Eliminación de 329,663 registros duplicados
-- Registros finales antes del submuestreo: 2,498,243
+Se eligió esta versión porque consolida los 8 archivos CSV originales en uno solo, conserva las 79 columnas y las 15 clases, y es la más descargada entre las disponibles. Se verificó que coincide con el dataset original en número de clases y estructura de columnas.
 
-**Distribución de clases tras el submuestreo:**
+La limpieza siguió los criterios de Lara-Gutiérrez (2025) y Lanvin et al. (2022): se eliminaron 1,479 valores infinitos en las columnas de tasa de flujo y 329,663 registros duplicados. Quedaron 2,498,243 registros antes del submuestreo.
+
+**Distribución tras el submuestreo:**
 
 | Clase | Tipo | Muestras |
 |-------|------|----------|
@@ -130,9 +129,9 @@ ICC = (CMM / 5) * KCI * (1 - KRI) * (1 - CVSS / 10)
 
 ---
 
-## Resultados principales
+## Resultados
 
-### F1-macro en evaluación interna (test)
+### F1-macro por nivel de heterogeneidad
 
 | Alpha | JS | Aprendida | Entropía | Baseline | Centralizado |
 |-------|----|-----------|----------|----------|--------------|
@@ -158,7 +157,7 @@ ICC = (CMM / 5) * KCI * (1 - KRI) * (1 - CVSS / 10)
 
 ---
 
-## PROTOCOLO-STRESS, Resumen
+## PROTOCOLO-STRESS, resumen
 
 | Verificación | Resultado |
 |-------------|-----------|
@@ -172,39 +171,33 @@ ICC = (CMM / 5) * KCI * (1 - KRI) * (1 - CVSS / 10)
 
 ---
 
-## Hallazgo principal
+## Lo que muestran los resultados
 
-La Figura 3 muestra que el nodo con mayor ICC (Financiero, ICC=0.393) recibe consistentemente los mayores pesos aprendidos, mientras que el nodo Gobierno (ICC=0.042) recibe los menores. Esta correlación entre madurez institucional y peso empírico se mantiene en CIC-IDS2017, confirmando el patrón observado en NSL-KDD. Ese es el aporte central de este ejercicio: demostrar que el ICC tiene valor predictivo sobre la relevancia de cada nodo en la mezcla federada.
+El hallazgo más interesante no está en el F1 máximo, sino en la Figura 3. En todos los niveles de alpha, el nodo Financiero (ICC=0.393) recibe consistentemente los pesos más altos, y el nodo Gobierno (ICC=0.042) los más bajos. Eso no fue programado: el optimizador lo aprendió desde los datos de validación. Y coincide exactamente con lo que el ICC predice. Que ese patrón se repita en CIC-IDS2017 igual que en NSL-KDD es lo que hace que este ejercicio tenga algo que decir.
 
 ---
 
-## Limitaciones declaradas
+## Limitaciones que hay que declarar
 
-**Limitación 1:** El submuestreo reduce el dataset a 69,026 muestras para mantener viabilidad computacional. Clases como Heartbleed (11 muestras) e Infiltration (36 muestras) tienen representación muy limitada, lo que afecta la capacidad del modelo de aprender sus patrones.
+El submuestreo deja a clases como Heartbleed con solo 11 muestras e Infiltration con 36. El modelo las detecta, pero no tiene suficiente información para aprender sus patrones con solidez. Cualquier resultado sobre esas clases hay que interpretarlo con cautela.
 
-**Limitación 2:** En heterogeneidad moderada (alpha=0.3 y 0.5) el Baseline supera ligeramente a la Mezcla Aprendida, lo que indica sobreajuste del optimizador al conjunto de validación cuando las distribuciones de los nodos son similares.
+En heterogeneidad moderada (alpha 0.3 y 0.5) el Baseline supera ligeramente a la Mezcla Aprendida. Eso sugiere que el optimizador se ajusta demasiado al conjunto de validación cuando los nodos no son muy distintos entre sí. Es una limitación real que vale la pena declarar.
 
-**Limitación 3:** Variables CRISC estáticas, los valores de ICC no evolucionan por ronda de entrenamiento.
+Los valores CRISC son estáticos y no evolucionan por ronda de entrenamiento. Es una simplificación razonable para este ejercicio, pero abre preguntas para etapas posteriores.
 
 ---
 
 ## Pregunta abierta
 
-Los resultados de CIC-IDS2017 muestran que el modelo federado con pesos aprendidos desde variables CRISC generaliza mejor en escenarios de tráfico real que en datasets de laboratorio. La pregunta que abre el siguiente ejercicio es: si el ICC captura la madurez institucional de cada nodo, los resultados obtenidos con NSL-KDD y CIC-IDS2017, y una vez completado UNSW-NB15, permitirán demostrar que la confianza institucional es un regularizador universal, independiente del dominio? Esta pregunta conecta con la línea de trabajo del NICS Lab sobre transferencia de confianza en sistemas federados.
+Que la correlación entre ICC y pesos aprendidos se mantenga en dos datasets tan distintos sugiere que puede no ser específica de un dominio. La pregunta para el siguiente ejercicio es: ¿los resultados con UNSW-NB15 confirmarán que la confianza institucional actúa como regularizador independientemente del tipo de tráfico analizado? Esa respuesta conecta directamente con la línea de trabajo del NICS Lab sobre transferencia de confianza en sistemas federados.
 
 ---
 
 ## Cómo ejecutar en Google Colab
 
-1. Abrir `EJD_UMA_004_v8_9.ipynb` en Google Colab
-2. Tener disponible el archivo `kaggle.json`, se obtiene en kaggle.com → Ajustes → API
-3. Ejecutar **Runtime → Run all**
-4. El programa detecta automáticamente si el dataset ya existe antes de descargarlo
-5. Tiempo estimado: 90-120 minutos en CPU de Colab
-6. Al finalizar suena un beep doble de 432 Hz
-7. En caso de error suena un beep triple descendente
+Abrir `EJD_UMA_004_v8_9.ipynb` en Colab y tener disponible el archivo `kaggle.json` (se genera en kaggle.com → Ajustes → API → Crear token). El programa detecta si el dataset ya existe antes de descargarlo, así que si el entorno se reinicia no hay que reconfigurar nada manualmente.
 
-Todos los resultados son reproducibles con SEMILLA=42.
+Tiempo estimado: 90-120 minutos en CPU. Al terminar suena un beep doble de 432 Hz. Si hay error, un beep triple descendente. Todos los resultados son reproducibles con SEMILLA=42.
 
 ---
 
@@ -212,7 +205,7 @@ Todos los resultados son reproducibles con SEMILLA=42.
 
 | Versión | Fecha | Cambio principal |
 |---------|-------|-----------------|
-| **v8.9** | **Abr 2026** | **Primera versión con CIC-IDS2017: 15 clases, submuestreo por criterio Ezequiel, max_categorias+1, 3 figuras** |
+| **v8.9** | **Abr 2026** | Primera versión con CIC-IDS2017: 15 clases, submuestreo por criterio directores, max_categorias+1, 3 figuras |
 
 ---
 
